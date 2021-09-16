@@ -114,27 +114,23 @@ class Exists extends FieldCondition {
 
 class RegEx implements Condition {
   final String fieldName;
-  final String pattern;
-  final String? options;
+  final RegExp pattern;
 
   RegEx({
     required this.fieldName,
     required this.pattern,
-    this.options,
   });
 
   @override
   Map<String, dynamic> get data => {
         fieldName: {
-          r'$regex': pattern,
-          r'$options': options ?? 'i',
+          r'$regex': pattern.pattern,
         }
       };
 
   @override
   bool _evaluate(RealtimeDocument document) {
-    final reg = RegExp(pattern + '/' + (options ?? 'i'));
-    return reg.hasMatch(document[fieldName]);
+    return pattern.hasMatch(document[fieldName]);
   }
 }
 
