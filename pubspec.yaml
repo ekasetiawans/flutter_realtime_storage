@@ -1,7 +1,7 @@
 name: flutter_realtime_storage
 description: A new flutter plugin project.
 version: 0.0.1
-homepage:
+repository: https://github.com/ekasetiawans/flutter_realtime_storage.git
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
