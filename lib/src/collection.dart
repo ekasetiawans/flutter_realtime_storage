@@ -8,13 +8,30 @@ class RealtimeCollection {
       : _storage = storage,
         _path = path;
 
-  Stream<List<RealtimeDocument>> stream() async* {
+  Future<RealtimeDocument?> getDocumentById(String id) async {
+    final idx = _list.indexWhere((element) => element.id == id);
+    if (idx >= 0) {
+      return _list[idx];
+    }
+
+    return _storage.document(_path + '/' + id);
+  }
+
+  List<RealtimeDocument> _list = [];
+  Stream<List<RealtimeDocument>> stream({Query? where}) async* {
     final segments = _path.split('/');
     if (segments.length % 2 == 0) {
       throw Exception('path is not valid as collection path');
     }
 
-    final res = await _storage._dio.get(_path);
+    yield _list;
+    final res = await _storage._dio.get(
+      _path,
+      queryParameters: {
+        if (where != null) 'q': where._value,
+      },
+    );
+
     List<RealtimeDocument> list = [];
     if (res.statusCode == 200) {
       if (res.data is List) {
@@ -31,7 +48,7 @@ class RealtimeCollection {
       }
     }
 
-  
+    _list = list;
     yield* _storage._listenFor(_path).transform(
       StreamTransformer.fromHandlers(
         handleData: (event, sink) {
@@ -45,8 +62,11 @@ class RealtimeCollection {
                   storage: _storage,
                   path: _path + '/' + data['_id'],
                 );
-                list.add(snapshot);
-                sink.add(list);
+
+                if (where == null || where._evaluate(snapshot)) {
+                  list.add(snapshot);
+                  sink.add(list);
+                }
               }
               break;
 
@@ -59,12 +79,14 @@ class RealtimeCollection {
                   path: _path + '/' + data['_id'],
                 );
 
-                final idx =
-                    list.indexWhere((element) => element.id == snapshot.id);
-                if (idx >= 0) {
-                  final doc = list[idx];
-                  doc._updateData(snapshot._data);
-                  sink.add(list);
+                if (where == null || where._evaluate(snapshot)) {
+                  final idx =
+                      list.indexWhere((element) => element.id == snapshot.id);
+                  if (idx >= 0) {
+                    final doc = list[idx];
+                    doc._updateData(snapshot._data);
+                    sink.add(list);
+                  }
                 }
               }
               break;
@@ -85,8 +107,6 @@ class RealtimeCollection {
         },
       ),
     );
-
-   
   }
 
   Future<RealtimeDocument?> add(Map<String, dynamic> data) async {

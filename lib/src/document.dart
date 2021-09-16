@@ -1,6 +1,6 @@
 part of realtime_storage;
 
-class RealtimeDocument {
+class RealtimeDocument with MapMixin<String, dynamic> {
   String get id => _data['_id'];
   DateTime get createdAt => DateTime.parse(_data['_created_at']);
   DateTime? get updatedAt => _data['_updated_at'] == null
@@ -25,7 +25,8 @@ class RealtimeDocument {
     return _storage.collection(paths.join('/'));
   }
 
-  dynamic operator [](String key) {
+  @override
+  dynamic operator [](Object? key) {
     return _data[key];
   }
 
@@ -33,6 +34,7 @@ class RealtimeDocument {
     _data = data;
   }
 
+  @override
   void operator []=(String key, dynamic value) {
     assert(
       !key.startsWith('_'),
@@ -41,8 +43,8 @@ class RealtimeDocument {
     _data[key] = value;
   }
 
-  Future<bool> update() async {
-    final updated = Map.from(_data);
+  Future<bool> save({Map<String, dynamic>? data}) async {
+    final updated = Map.from(data ?? _data);
     updated.remove('_id');
 
     final res = await _storage._dio.put(
@@ -84,5 +86,22 @@ class RealtimeDocument {
         },
       ),
     );
+  }
+
+  @override
+  void clear() {
+    _data.removeWhere((key, value) => !key.startsWith('_'));
+  }
+
+  @override
+  Iterable<String> get keys => _data.keys;
+
+  @override
+  remove(Object? key) {
+    if (key is String && key.startsWith('_')) {
+      return;
+    }
+
+    _data.remove(key);
   }
 }
