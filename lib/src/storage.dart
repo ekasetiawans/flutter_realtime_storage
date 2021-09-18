@@ -27,7 +27,9 @@ class RealtimeStorage {
   Future<void> _connectWebSocket() async {
     try {
       final wsUrl = baseURL.replaceFirst('http', 'ws');
-      _webSocket = await WebSocket.connect('$wsUrl/database/$database/');
+      _webSocket = WebSocket('$wsUrl/database/$database/');
+      await _webSocket.connect();
+
       _webSocket.listen(
         (event) {
           final data = json.decode(event);
@@ -39,9 +41,7 @@ class RealtimeStorage {
             Future.delayed(const Duration(seconds: 1), _connectWebSocket);
           }
         },
-        onError: (err) {
-          print(err);
-        },
+        onError: (err) {},
       );
 
       if (!_webSocketReady.isCompleted) {
@@ -131,15 +131,16 @@ class RealtimeStorage {
 
   Future<bool> uploadFile({
     required String remotePath,
-    required File file,
+    required List<int> value,
+    required String fileName,
   }) async {
     final url = '$baseURL/storage/$database/$remotePath';
     final res = await _dio.post(
       url,
       data: {
-        'file': await MultipartFile.fromFile(
-          file.absolute.path,
-          filename: file.path.substring(file.path.lastIndexOf('/') + 1),
+        'file': MultipartFile.fromBytes(
+          value,
+          filename: fileName,
         ),
       },
     );

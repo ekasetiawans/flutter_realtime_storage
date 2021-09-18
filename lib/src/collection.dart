@@ -17,18 +17,16 @@ class RealtimeCollection {
     return _storage.document(_path + '/' + id);
   }
 
-  List<RealtimeDocument> _list = [];
-  Stream<List<RealtimeDocument>> stream({Query? where}) async* {
-    final segments = _path.split('/');
-    if (segments.length % 2 == 0) {
-      throw Exception('path is not valid as collection path');
-    }
-
-    yield _list;
+  Future<List<RealtimeDocument>> get({Condition? where}) async {
     final res = await _storage._dio.get(
       _path,
       queryParameters: {
-        if (where != null) 'q': where._value,
+        if (where != null)
+          'q': base64Url.encode(
+            utf8.encode(
+              json.encode(where.data),
+            ),
+          ),
       },
     );
 
@@ -44,11 +42,25 @@ class RealtimeCollection {
               ),
             )
             .toList();
-        yield list;
       }
     }
 
+    return list;
+  }
+
+  List<RealtimeDocument> _list = [];
+  Stream<List<RealtimeDocument>> stream({Condition? where}) async* {
+    final segments = _path.split('/');
+    if (segments.length % 2 == 0) {
+      throw Exception('path is not valid as collection path');
+    }
+
+    yield _list;
+    final list = await get(where: where);
+
     _list = list;
+    yield _list;
+
     yield* _storage._listenFor(_path).transform(
       StreamTransformer.fromHandlers(
         handleData: (event, sink) {
